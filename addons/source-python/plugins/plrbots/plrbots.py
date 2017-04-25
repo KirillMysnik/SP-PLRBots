@@ -24,6 +24,7 @@ from players.teams import teams_by_number
 
 # PLRBots
 from .core.cvars import config_manager
+from .core.external_plugins import ExternalPluginInterface
 from .core.memory import server_tools, TFBotScenarioMonitor, TFGameRules
 from .core.strings import COLOR_SCHEME, common_strings
 
@@ -76,20 +77,24 @@ def set_player_class(player, player_class):
 
 
 def change_to_random_class(player):
-    class_chances = {key: 1 for key in range(1, 10)}
-    for player_ in PlayerIter(teams_by_number[player.team]):
-        player_class = get_player_class(player_)
-        if player_class not in class_chances:
-            continue
+    if class_limit_interface['get_spare_class'] is None:
+        class_chances = {key: 1 for key in range(1, 10)}
+        for player_ in PlayerIter(teams_by_number[player.team]):
+            player_class = get_player_class(player_)
+            if player_class not in class_chances:
+                continue
 
-        class_chances[player_class] *= 0.5
+            class_chances[player_class] *= 0.5
 
-    x = random.random() * sum(class_chances.values())
-    full_chance = 0
-    for player_class, chance in class_chances.items():
-        full_chance += chance
-        if x < full_chance:
-            break
+        x = random.random() * sum(class_chances.values())
+        full_chance = 0
+        for player_class, chance in class_chances.items():
+            full_chance += chance
+            if x < full_chance:
+                break
+
+    else:
+        player_class = class_limit_interface['get_spare_class'](player.team)
 
     set_player_class(player, player_class)
 
@@ -121,6 +126,8 @@ train_watchers_by_team = {}
 bot_professions = PlayerDictionary(lambda index: BotProfession.BLOCK)
 temp_teams = PlayerDictionary(lambda index: 0)
 game_rules = None
+
+class_limit_interface = ExternalPluginInterface('class_limit')
 
 
 # =============================================================================
